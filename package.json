@@ -1,0 +1,151 @@
+{
+  "name": "archive-peek",
+  "displayName": "Archive Peek",
+  "description": "Peek inside .zip, .7z, .rar, .tar, .tar.gz, .tar.bz2, .tar.xz, .jar, .war, .vsix, .nupkg, .apk archives without extracting them",
+  "version": "0.2.0",
+  "publisher": "Dzuelu",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "archive",
+    "zip",
+    "7z",
+    "tar",
+    "tar.gz",
+    "tar.bz2",
+    "tar.xz",
+    "jar",
+    "war",
+    "vsix",
+    "nupkg",
+    "apk",
+    "rar",
+    "peek"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "archivePeek.openArchive",
+        "title": "Open Archive",
+        "category": "Archive Peek",
+        "icon": "$(file-zip)"
+      },
+      {
+        "command": "archivePeek.refresh",
+        "title": "Refresh Archives",
+        "category": "Archive Peek",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "archivePeek.closeArchive",
+        "title": "Close Archive",
+        "category": "Archive Peek",
+        "icon": "$(close)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "archivePeek.openArchive",
+          "when": "resourceExtname == .zip || resourceExtname == .7z || resourceExtname == .gz || resourceExtname == .tar || resourceExtname == .bz2 || resourceExtname == .xz || resourceExtname == .jar || resourceExtname == .war || resourceExtname == .ear || resourceExtname == .vsix || resourceExtname == .nupkg || resourceExtname == .apk || resourceExtname == .rar || resourceExtname == .tgz || resourceExtname == .tbz2 || resourceExtname == .txz",
+          "group": "navigation"
+        }
+      ]
+    },
+    "customEditors": [
+      {
+        "viewType": "archivePeek.archiveEditor",
+        "displayName": "Archive Peek",
+        "selector": [
+          {
+            "filenamePattern": "*.zip"
+          },
+          {
+            "filenamePattern": "*.7z"
+          },
+          {
+            "filenamePattern": "*.tar"
+          },
+          {
+            "filenamePattern": "*.tar.gz"
+          },
+          {
+            "filenamePattern": "*.tgz"
+          },
+          {
+            "filenamePattern": "*.tar.bz2"
+          },
+          {
+            "filenamePattern": "*.tbz2"
+          },
+          {
+            "filenamePattern": "*.tar.xz"
+          },
+          {
+            "filenamePattern": "*.txz"
+          },
+          {
+            "filenamePattern": "*.jar"
+          },
+          {
+            "filenamePattern": "*.war"
+          },
+          {
+            "filenamePattern": "*.ear"
+          },
+          {
+            "filenamePattern": "*.vsix"
+          },
+          {
+            "filenamePattern": "*.nupkg"
+          },
+          {
+            "filenamePattern": "*.apk"
+          },
+          {
+            "filenamePattern": "*.rar"
+          }
+        ],
+        "priority": "default"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix .",
+    "validate": "npm run compile && npm run lint:fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench": "vitest bench --run"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.0",
+    "@typescript-eslint/parser": "^8.56.0",
+    "eslint": "^10.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "prettier": "^3.8.1",
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.56.0",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "7zip-bin": "^5.2.0",
+    "adm-zip": "^0.5.10",
+    "node-7z": "^3.0.0",
+    "node-unrar-js": "^2.0.2",
+    "tar-stream": "^3.1.6",
+    "unbzip2-stream": "^1.4.3",
+    "xz-decompress": "^0.2.3"
+  }
+}

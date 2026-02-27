@@ -1,0 +1,6 @@
+out/
+node_modules/
+.vscode-test/
+*.vsix
+test/fixtures/*
+!test/fixtures/create-fixtures.sh
