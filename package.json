@@ -6,6 +6,7 @@
   "publisher": "Dzuelu",
   "repository": "https://github.com/Dzuelu/archive-peek",
   "engines": {
+    "node": "24.x",
     "vscode": "^1.85.0"
   },
   "categories": [
