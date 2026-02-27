@@ -2,3 +2,7 @@
 .vscode
 src
 test
+vitest.config.ts
+tsconfig.json
+eslint.config.mjs
+.gitignore
