@@ -4,6 +4,7 @@
   "description": "Peek inside .zip, .7z, .rar, .tar, .tar.gz, .tar.bz2, .tar.xz, .jar, .war, .vsix, .nupkg, .apk archives without extracting them",
   "version": "0.2.0",
   "publisher": "Dzuelu",
+  "repository": "https://github.com/Dzuelu/archive-peek",
   "engines": {
     "vscode": "^1.85.0"
   },
