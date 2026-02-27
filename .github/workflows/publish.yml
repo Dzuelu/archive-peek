@@ -25,6 +25,9 @@ jobs:
         run: npm run compile
 
       - name: Publish to Visual Studio Marketplace
+        run: npx @vscode/vsce pack && npx @vscode/vsce ls --tree
+
+      - name: Publish to Visual Studio Marketplace
         run: npx @vscode/vsce publish --no-git-tag-version
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
