@@ -24,7 +24,7 @@ jobs:
       - name: Compile
         run: npm run compile
 
-      - name: Publish to Visual Studio Marketplace
+      - name: Pack and list files
         run: npx @vscode/vsce pack && npx @vscode/vsce ls --tree
 
       - name: Publish to Visual Studio Marketplace
