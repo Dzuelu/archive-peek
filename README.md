@@ -2,6 +2,8 @@
 
 Peek inside archive files directly in VS Code — without extracting them to disk. Simply click an archive in the Explorer and get an interactive file browser with stats, right inside the editor.
 
+![Archive Peek screenshot](screenshot.png)
+
 ## Supported Formats
 
 | Format       | Extension(s)              | Library Used              |
