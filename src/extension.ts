@@ -47,6 +47,9 @@ export function activate(context: vscode.ExtensionContext) {
               '7z',
               'rar',
               'tar',
+              'gz',
+              'bz2',
+              'xz',
               'tar.gz',
               'tgz',
               'tar.bz2',
@@ -58,11 +61,18 @@ export function activate(context: vscode.ExtensionContext) {
               'ear',
               'vsix',
               'nupkg',
-              'apk'
+              'apk',
+              'whl',
+              'xpi',
+              'epub',
+              'aar'
             ],
-            'ZIP Files': ['zip', 'jar', 'war', 'ear', 'vsix', 'nupkg', 'apk'],
+            'ZIP Files': ['zip', 'jar', 'war', 'ear', 'vsix', 'nupkg', 'apk', 'whl', 'xpi', 'epub', 'aar'],
             '7-Zip Files': ['7z'],
             'RAR Files': ['rar'],
+            'GZip Files': ['gz'],
+            'BZip2 Files': ['bz2'],
+            'XZ Files': ['xz'],
             'Tar Files': ['tar', 'tar.gz', 'tgz', 'tar.bz2', 'tbz2', 'tar.xz', 'txz'],
             'All Files': ['*']
           }

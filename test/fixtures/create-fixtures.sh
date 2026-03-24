@@ -20,5 +20,17 @@ if command -v rar &> /dev/null; then
   rar a sample.rar sample/*
 fi
 
+# Create a plain .gz from a single file
+gzip -k -f sample/hello.txt
+mv sample/hello.txt.gz hello.txt.gz
+
+# Create a plain .bz2 from a single file
+bzip2 -k -f sample/hello.txt
+mv sample/hello.txt.bz2 hello.txt.bz2
+
+# Create a plain .xz from a single file
+xz -k -f sample/hello.txt
+mv sample/hello.txt.xz hello.txt.xz
+
 echo "Fixtures created:"
-ls -la sample.*
+ls -la sample.* hello.txt.*

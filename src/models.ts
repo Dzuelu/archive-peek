@@ -19,7 +19,7 @@ export interface ArchiveEntry {
 }
 
 /** Supported archive types */
-export type ArchiveType = 'zip' | '7z' | 'rar' | 'tar' | 'tar.gz' | 'tar.bz2' | 'tar.xz';
+export type ArchiveType = 'zip' | '7z' | 'rar' | 'tar' | 'tar.gz' | 'tar.bz2' | 'tar.xz' | 'gz' | 'bz2' | 'xz';
 
 /** Callback to opportunistically cache files encountered while streaming */
 export type StreamCacheCallback = (entryPath: string, data: Buffer) => void;

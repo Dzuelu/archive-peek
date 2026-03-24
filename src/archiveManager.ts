@@ -7,6 +7,9 @@ import {
   TarGzHandler,
   TarBz2Handler,
   TarXzHandler,
+  GzHandler,
+  Bz2Handler,
+  XzHandler,
   RarHandler,
   SevenZipHandler
 } from './handlers';
@@ -40,6 +43,9 @@ export class ArchiveManager {
     this.handlers.push(new TarGzHandler());
     this.handlers.push(new TarBz2Handler());
     this.handlers.push(new TarXzHandler());
+    this.handlers.push(new GzHandler());
+    this.handlers.push(new Bz2Handler());
+    this.handlers.push(new XzHandler());
     this.handlers.push(new RarHandler());
     this.handlers.push(new SevenZipHandler());
   }
@@ -56,7 +62,11 @@ export class ArchiveManager {
       lower.endsWith('.ear') ||
       lower.endsWith('.vsix') ||
       lower.endsWith('.nupkg') ||
-      lower.endsWith('.apk')
+      lower.endsWith('.apk') ||
+      lower.endsWith('.whl') ||
+      lower.endsWith('.xpi') ||
+      lower.endsWith('.epub') ||
+      lower.endsWith('.aar')
     ) {
       return 'zip';
     }
@@ -77,6 +87,15 @@ export class ArchiveManager {
     }
     if (lower.endsWith('.7z')) {
       return '7z';
+    }
+    if (lower.endsWith('.gz')) {
+      return 'gz';
+    }
+    if (lower.endsWith('.bz2')) {
+      return 'bz2';
+    }
+    if (lower.endsWith('.xz')) {
+      return 'xz';
     }
     return undefined;
   }

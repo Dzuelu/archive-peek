@@ -3,5 +3,8 @@ export { TarHandler } from './tarHandler';
 export { TarGzHandler } from './tarGzHandler';
 export { TarBz2Handler } from './tarBz2Handler';
 export { TarXzHandler } from './tarXzHandler';
+export { GzHandler } from './gzHandler';
+export { Bz2Handler } from './bz2Handler';
+export { XzHandler } from './xzHandler';
 export { RarHandler } from './rarHandler';
 export { SevenZipHandler } from './sevenZipHandler';
