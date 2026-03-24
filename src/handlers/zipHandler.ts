@@ -9,7 +9,19 @@ import AdmZip = require('adm-zip');
  * from disk once. The cache is cleared when the archive is closed.
  */
 export class ZipHandler implements IArchiveHandler {
-  private static readonly ZIP_EXTENSIONS = ['.zip', '.jar', '.war', '.ear', '.vsix', '.nupkg', '.apk'];
+  private static readonly ZIP_EXTENSIONS = [
+    '.zip',
+    '.jar',
+    '.war',
+    '.ear',
+    '.vsix',
+    '.nupkg',
+    '.apk',
+    '.whl',
+    '.xpi',
+    '.epub',
+    '.aar'
+  ];
 
   /** Cached AdmZip instances keyed by absolute archive path. */
   private zipCache = new Map<string, InstanceType<typeof AdmZip>>();

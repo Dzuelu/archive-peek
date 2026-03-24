@@ -1,7 +1,7 @@
 {
   "name": "archive-peek",
   "displayName": "Archive Peek",
-  "description": "Peek inside .zip, .7z, .rar, .tar, .tar.gz, .tar.bz2, .tar.xz, .jar, .war, .vsix, .nupkg, .apk archives without extracting them",
+  "description": "Peek inside .zip, .7z, .rar, .tar, .gz, .bz2, .xz, .tar.gz, .tar.bz2, .tar.xz, .jar, .war, .vsix, .nupkg, .apk, .whl, .xpi, .epub, .aar archives without extracting them",
   "version": "0.0.0",
   "publisher": "Dzuelu",
   "repository": "https://github.com/Dzuelu/archive-peek",
@@ -17,9 +17,16 @@
     "zip",
     "7z",
     "tar",
+    "gz",
+    "bz2",
+    "xz",
     "tar.gz",
     "tar.bz2",
     "tar.xz",
+    "whl",
+    "xpi",
+    "epub",
+    "aar",
     "jar",
     "war",
     "vsix",
@@ -54,7 +61,7 @@
       "explorer/context": [
         {
           "command": "archivePeek.openArchive",
-          "when": "resourceExtname == .zip || resourceExtname == .7z || resourceExtname == .gz || resourceExtname == .tar || resourceExtname == .bz2 || resourceExtname == .xz || resourceExtname == .jar || resourceExtname == .war || resourceExtname == .ear || resourceExtname == .vsix || resourceExtname == .nupkg || resourceExtname == .apk || resourceExtname == .rar || resourceExtname == .tgz || resourceExtname == .tbz2 || resourceExtname == .txz",
+          "when": "resourceExtname == .zip || resourceExtname == .7z || resourceExtname == .gz || resourceExtname == .bz2 || resourceExtname == .xz || resourceExtname == .tar || resourceExtname == .jar || resourceExtname == .war || resourceExtname == .ear || resourceExtname == .vsix || resourceExtname == .nupkg || resourceExtname == .apk || resourceExtname == .whl || resourceExtname == .xpi || resourceExtname == .epub || resourceExtname == .aar || resourceExtname == .rar || resourceExtname == .tgz || resourceExtname == .tbz2 || resourceExtname == .txz",
           "group": "navigation"
         }
       ]
@@ -111,6 +118,27 @@
           },
           {
             "filenamePattern": "*.rar"
+          },
+          {
+            "filenamePattern": "*.gz"
+          },
+          {
+            "filenamePattern": "*.bz2"
+          },
+          {
+            "filenamePattern": "*.xz"
+          },
+          {
+            "filenamePattern": "*.whl"
+          },
+          {
+            "filenamePattern": "*.xpi"
+          },
+          {
+            "filenamePattern": "*.epub"
+          },
+          {
+            "filenamePattern": "*.aar"
           }
         ],
         "priority": "default"
