@@ -166,7 +166,7 @@
     "test:watch": "vitest",
     "bench": "vitest bench --run",
     "bench:baseline": "vitest bench --run --outputJson bench-results/baseline.json && BENCH_LABEL=baseline vitest run --config vitest.memory.config.ts",
-    "bench:compare": "vitest bench --run --compare bench-results/baseline.json && vitest run --config vitest.memory.config.ts",
+    "bench:compare": "vitest bench --run --outputJson bench-results/current.json && vitest run --config vitest.memory.config.ts && node scripts/bench-report.mjs",
     "bench:memory": "vitest run --config vitest.memory.config.ts"
   },
   "devDependencies": {
