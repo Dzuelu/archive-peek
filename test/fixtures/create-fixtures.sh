@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 # Create source content
 mkdir -p sample/src
 printf 'Hello, World!\n' > sample/hello.txt
-printf 'export const version = "1.0.0";\n' > sample/src/index.ts
+printf 'export const version = '1.0.0';\n' > sample/src/index.ts
 printf '{"name":"test"}\n' > sample/package.json
 
 # Create archives
