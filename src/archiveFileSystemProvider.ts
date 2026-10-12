@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { ArchiveManager } from './archiveManager';
+import { ArchiveChangeEvent, ArchiveManager } from './archiveManager';
 
 /**
  * URI scheme for archive virtual filesystem.
@@ -65,33 +65,76 @@ export function decodeArchiveUri(uri: vscode.Uri): { archivePath: string; entryP
  * A read-only FileSystemProvider that exposes archive contents as a virtual
  * filesystem. Archives appear as expandable folders in the VS Code Explorer.
  */
-export class ArchiveFileSystemProvider implements vscode.FileSystemProvider {
+export class ArchiveFileSystemProvider implements vscode.FileSystemProvider, vscode.Disposable {
   private _onDidChangeFile = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
   readonly onDidChangeFile = this._onDidChangeFile.event;
+  private subscription: { dispose(): void };
 
-  constructor(private archiveManager: ArchiveManager) {}
+  constructor(private archiveManager: ArchiveManager) {
+    this.subscription = archiveManager.onDidChangeArchive((event) => this.onArchiveChanged(event));
+  }
 
   watch(): vscode.Disposable {
-    // Archives are static — no file watching needed
+    // Change notifications are driven by ArchiveManager events (see ArchiveWatcher)
     return new vscode.Disposable(() => {});
+  }
+
+  /**
+   * Translate an archive-level change into file change events for the
+   * archive root and any of its entries currently open in an editor.
+   * Only open resources are notified so large archives don't flood VS Code.
+   */
+  private onArchiveChanged(event: ArchiveChangeEvent): void {
+    if (event.type !== 'changed' && event.type !== 'deleted') {
+      return;
+    }
+
+    const rootUri = archiveRootUri(event.filePath);
+    const changes: vscode.FileChangeEvent[] = [
+      { type: event.type === 'deleted' ? vscode.FileChangeType.Deleted : vscode.FileChangeType.Changed, uri: rootUri }
+    ];
+
+    const remaining = event.type === 'changed' ? new Set(event.archive.entries.map((e) => e.path)) : new Set();
+    for (const uri of openArchiveUris(rootUri.authority)) {
+      const { entryPath } = decodeArchiveUri(uri);
+      if (entryPath === '') {
+        continue;
+      }
+      changes.push({
+        type: remaining.has(entryPath) ? vscode.FileChangeType.Changed : vscode.FileChangeType.Deleted,
+        uri
+      });
+    }
+
+    this._onDidChangeFile.fire(changes);
   }
 
   async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
     const { archivePath, entryPath } = decodeArchiveUri(uri);
 
     // Ensure archive is loaded
-    await this.archiveManager.openArchive(archivePath);
+    try {
+      await this.archiveManager.openArchive(archivePath);
+    } catch (_error) {
+      throw vscode.FileSystemError.FileNotFound(uri);
+    }
     const archive = this.archiveManager.getArchive(archivePath);
     if (!archive) {
       throw vscode.FileSystemError.FileNotFound(uri);
     }
 
+    // Report times no older than the archive file itself. Entry timestamps
+    // are often fixed (reproducible builds) or missing, and VS Code skips
+    // reloading an open document whose mtime hasn't moved.
+    const ctime = archive.diskMtime;
+    const mtimeOf = (entryTime?: Date) => Math.max(entryTime?.getTime() ?? 0, archive.diskMtime);
+
     // Root of archive
     if (entryPath === '') {
       return {
         type: vscode.FileType.Directory,
-        ctime: 0,
-        mtime: 0,
+        ctime,
+        mtime: archive.diskMtime,
         size: 0
       };
     }
@@ -110,8 +153,8 @@ export class ArchiveFileSystemProvider implements vscode.FileSystemProvider {
       if (hasChildren) {
         return {
           type: vscode.FileType.Directory,
-          ctime: 0,
-          mtime: 0,
+          ctime,
+          mtime: archive.diskMtime,
           size: 0
         };
       }
@@ -121,16 +164,16 @@ export class ArchiveFileSystemProvider implements vscode.FileSystemProvider {
     if (entry.isDirectory) {
       return {
         type: vscode.FileType.Directory,
-        ctime: 0,
-        mtime: entry.modifiedTime?.getTime() ?? 0,
+        ctime,
+        mtime: mtimeOf(entry.modifiedTime),
         size: 0
       };
     }
 
     return {
       type: vscode.FileType.File,
-      ctime: 0,
-      mtime: entry.modifiedTime?.getTime() ?? 0,
+      ctime,
+      mtime: mtimeOf(entry.modifiedTime),
       size: entry.size
     };
   }
@@ -138,7 +181,11 @@ export class ArchiveFileSystemProvider implements vscode.FileSystemProvider {
   async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
     const { archivePath, entryPath } = decodeArchiveUri(uri);
 
-    await this.archiveManager.openArchive(archivePath);
+    try {
+      await this.archiveManager.openArchive(archivePath);
+    } catch (_error) {
+      throw vscode.FileSystemError.FileNotFound(uri);
+    }
     const archive = this.archiveManager.getArchive(archivePath);
     if (!archive) {
       throw vscode.FileSystemError.FileNotFound(uri);
@@ -192,4 +239,38 @@ export class ArchiveFileSystemProvider implements vscode.FileSystemProvider {
   rename(): void {
     throw vscode.FileSystemError.NoPermissions('Archive is read-only');
   }
+
+  dispose(): void {
+    this.subscription.dispose();
+    this._onDidChangeFile.dispose();
+  }
+}
+
+/**
+ * Collect archive:// URIs for the given archive (by URI authority) that are
+ * currently open as text documents or editor tabs.
+ */
+function openArchiveUris(authority: string): vscode.Uri[] {
+  const uris = new Map<string, vscode.Uri>();
+  const add = (uri: vscode.Uri | undefined) => {
+    if (uri && uri.scheme === ARCHIVE_SCHEME && uri.authority === authority) {
+      uris.set(uri.toString(), uri);
+    }
+  };
+
+  for (const doc of vscode.workspace.textDocuments) {
+    add(doc.uri);
+  }
+  for (const group of vscode.window.tabGroups.all) {
+    for (const tab of group.tabs) {
+      const input = tab.input;
+      if (input instanceof vscode.TabInputText || input instanceof vscode.TabInputCustom) {
+        add(input.uri);
+      } else if (input instanceof vscode.TabInputTextDiff) {
+        add(input.original);
+        add(input.modified);
+      }
+    }
+  }
+  return [...uris.values()];
 }

@@ -4,3 +4,4 @@ node_modules/
 *.vsix
 test/fixtures/*
 !test/fixtures/create-fixtures.sh
+bench-results/

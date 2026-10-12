@@ -13,5 +13,5 @@
     "resolveJsonModule": true,
     "declaration": true
   },
-  "exclude": ["node_modules", ".vscode-test", "out", "test", "vitest.config.ts"]
+  "exclude": ["node_modules", ".vscode-test", "out", "test", "vitest.config.ts", "vitest.memory.config.ts"]
 }

@@ -35,3 +35,14 @@ export interface IArchiveHandler {
   /** Optional: release any cached resources for a specific archive */
   dispose?(archivePath: string): void;
 }
+
+/**
+ * Thrown by a handler when the archive on disk no longer matches the state
+ * it was listed from (size or mtime changed), so cached offsets can't be trusted.
+ */
+export class ArchiveChangedError extends Error {
+  constructor(archivePath: string) {
+    super(`Archive changed on disk: ${archivePath}`);
+    this.name = 'ArchiveChangedError';
+  }
+}

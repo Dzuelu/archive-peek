@@ -1,30 +1,3 @@
-declare module 'adm-zip' {
-  class AdmZip {
-    constructor(filePath?: string | Buffer);
-    getEntries(): AdmZip.IZipEntry[];
-    readFile(entry: AdmZip.IZipEntry | string): Buffer | null;
-    readAsText(entry: AdmZip.IZipEntry | string, encoding?: string): string;
-  }
-
-  namespace AdmZip {
-    interface IZipEntry {
-      entryName: string;
-      name: string;
-      isDirectory: boolean;
-      comment: string;
-      compressedSize: number;
-      header: {
-        size: number;
-        compressedSize: number;
-        offset: number;
-        time: Date;
-      };
-    }
-  }
-
-  export = AdmZip;
-}
-
 declare module 'tar-stream' {
   import { Readable, Writable } from 'stream';
 

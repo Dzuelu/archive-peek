@@ -6,8 +6,8 @@
   "publisher": "Dzuelu",
   "repository": "https://github.com/Dzuelu/archive-peek",
   "engines": {
-    "node": "24.x",
-    "vscode": "^1.85.0"
+    "node": "22.x",
+    "vscode": "^1.101.0"
   },
   "categories": [
     "Other"
@@ -37,6 +37,16 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Archive Peek",
+      "properties": {
+        "archivePeek.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically refresh opened archives, and any files opened from them, when the archive changes on disk."
+        }
+      }
+    },
     "commands": [
       {
         "command": "archivePeek.openArchive",
@@ -154,28 +164,35 @@
     "validate": "npm run compile && npm run lint:fix",
     "test": "vitest run",
     "test:watch": "vitest",
-    "bench": "vitest bench --run"
+    "bench": "vitest bench --run",
+    "bench:baseline": "vitest bench --run --outputJson bench-results/baseline.json && BENCH_LABEL=baseline vitest run --config vitest.memory.config.ts",
+    "bench:compare": "vitest bench --run --compare bench-results/baseline.json && vitest run --config vitest.memory.config.ts",
+    "bench:memory": "vitest run --config vitest.memory.config.ts"
   },
   "devDependencies": {
-    "@types/node": "24.x",
-    "@types/vscode": "^1.85.0",
-    "@typescript-eslint/eslint-plugin": "^8.56.0",
-    "@typescript-eslint/parser": "^8.56.0",
-    "eslint": "^10.0.0",
+    "@types/adm-zip": "^0.5.8",
+    "@types/node": "22.x",
+    "@types/vscode": "~1.101.0",
+    "@types/yauzl": "^3.4.0",
+    "@typescript-eslint/eslint-plugin": "^8.71.1",
+    "@typescript-eslint/parser": "^8.71.1",
+    "@vscode/vsce": "^4.0.0",
+    "adm-zip": "^0.6.1",
+    "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.5",
-    "prettier": "^3.8.1",
+    "eslint-plugin-prettier": "^5.5.6",
+    "prettier": "^3.9.9",
     "typescript": "^5.3.3",
-    "typescript-eslint": "^8.56.0",
-    "vitest": "^4.0.18"
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^4.1.11"
   },
   "dependencies": {
     "7zip-bin": "^5.2.0",
-    "adm-zip": "^0.5.10",
     "node-7z": "^3.0.0",
     "node-unrar-js": "^2.0.2",
-    "tar-stream": "^3.1.6",
+    "tar-stream": "^3.2.2",
     "unbzip2-stream": "^1.4.3",
-    "xz-decompress": "^0.2.3"
+    "xz-decompress": "^0.2.3",
+    "yauzl": "^3.4.0"
   }
 }

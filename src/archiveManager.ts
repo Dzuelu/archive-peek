@@ -1,5 +1,6 @@
+import * as fs from 'fs';
 import * as path from 'path';
-import { ArchiveEntry, IArchiveHandler, ArchiveType } from './models';
+import { ArchiveChangedError, ArchiveEntry, IArchiveHandler, ArchiveType } from './models';
 import { BufferCache } from './bufferCache';
 import {
   ZipHandler,
@@ -25,7 +26,27 @@ export interface OpenArchive {
   type: ArchiveType;
   /** Flat list of all entries */
   entries: ArchiveEntry[];
+  /** Modification time (ms) of the archive file on disk when it was last read */
+  diskMtime: number;
+  /** Size (bytes) of the archive file on disk when it was last read */
+  diskSize: number;
 }
+
+/**
+ * Lifecycle event for an archive tracked by the ArchiveManager.
+ *
+ * - `opened`:  the archive was read for the first time
+ * - `changed`: the archive was re-read after changing on disk (or a manual refresh)
+ * - `deleted`: the archive file disappeared from disk
+ * - `closed`:  the archive was explicitly closed by the user
+ */
+export type ArchiveChangeEvent =
+  | { type: 'opened'; filePath: string; archive: OpenArchive }
+  | { type: 'changed'; filePath: string; archive: OpenArchive; previousEntries: ArchiveEntry[] }
+  | { type: 'deleted'; filePath: string; previousEntries: ArchiveEntry[] }
+  | { type: 'closed'; filePath: string };
+
+export type ArchiveChangeListener = (event: ArchiveChangeEvent) => void;
 
 /**
  * Central service that manages opened archives and delegates
@@ -36,6 +57,9 @@ export class ArchiveManager {
   private openArchives: Map<string, OpenArchive> = new Map();
   /** LRU cache for file content buffers (default 50 MB cap). */
   private bufferCache = new BufferCache();
+  private listeners = new Set<ArchiveChangeListener>();
+  /** Per-archive refresh counter so a slow, superseded refresh can't overwrite a newer one. */
+  private refreshGeneration = new Map<string, number>();
 
   constructor() {
     this.handlers.push(new ZipHandler());
@@ -48,6 +72,20 @@ export class ArchiveManager {
     this.handlers.push(new XzHandler());
     this.handlers.push(new RarHandler());
     this.handlers.push(new SevenZipHandler());
+  }
+
+  /**
+   * Subscribe to archive lifecycle events. Returns a disposable-like handle.
+   */
+  onDidChangeArchive(listener: ArchiveChangeListener): { dispose(): void } {
+    this.listeners.add(listener);
+    return { dispose: () => this.listeners.delete(listener) };
+  }
+
+  private emit(event: ArchiveChangeEvent): void {
+    for (const listener of [...this.listeners]) {
+      listener(event);
+    }
   }
 
   /**
@@ -134,17 +172,35 @@ export class ArchiveManager {
       throw new Error(`Unsupported archive format: ${absPath}`);
     }
 
-    const handler = this.getHandler(absPath);
-    const entries = await handler.listEntries(absPath);
+    const archive = await this.loadArchive(absPath, archiveType);
+    this.openArchives.set(absPath, archive);
+    this.emit({ type: 'opened', filePath: absPath, archive });
+    return archive;
+  }
 
-    const archive: OpenArchive = {
+  /**
+   * Read the archive's disk metadata and entry list.
+   */
+  private async loadArchive(absPath: string, archiveType: ArchiveType): Promise<OpenArchive> {
+    const diskStat = await fs.promises.stat(absPath);
+    const entries = await this.getHandler(absPath).listEntries(absPath);
+    return {
       filePath: absPath,
       type: archiveType,
-      entries
+      entries,
+      diskMtime: diskStat.mtimeMs,
+      diskSize: diskStat.size
     };
+  }
 
-    this.openArchives.set(absPath, archive);
-    return archive;
+  /** Drop cached buffers and handler state for an archive. */
+  private releaseResources(absPath: string): void {
+    this.bufferCache.evictArchive(absPath);
+    for (const handler of this.handlers) {
+      if (handler.dispose) {
+        handler.dispose(absPath);
+      }
+    }
   }
 
   /**
@@ -168,7 +224,22 @@ export class ArchiveManager {
       this.bufferCache.set(absPath, extraPath, data);
     };
 
-    const buffer = await handler.readEntry(absPath, entryPath, onExtraEntry);
+    let buffer: Buffer;
+    try {
+      buffer = await handler.readEntry(absPath, entryPath, onExtraEntry);
+    } catch (error) {
+      if (!(error instanceof ArchiveChangedError)) {
+        throw error;
+      }
+      // The archive changed since it was listed (e.g. the watcher hasn't
+      // caught up yet). Re-read it so listeners see the new contents, then retry once.
+      if (this.openArchives.has(absPath)) {
+        await this.refreshArchive(absPath);
+      } else {
+        this.releaseResources(absPath);
+      }
+      buffer = await handler.readEntry(absPath, entryPath, onExtraEntry);
+    }
 
     // Cache the requested result
     this.bufferCache.set(absPath, entryPath, buffer);
@@ -181,13 +252,23 @@ export class ArchiveManager {
   closeArchive(filePath: string): void {
     const absPath = path.resolve(filePath);
     this.openArchives.delete(absPath);
-    this.bufferCache.evictArchive(absPath);
-    // Notify handlers so they can release cached resources
-    for (const handler of this.handlers) {
-      if (handler.dispose) {
-        handler.dispose(absPath);
-      }
+    this.releaseResources(absPath);
+    this.emit({ type: 'closed', filePath: absPath });
+  }
+
+  /**
+   * Forget an archive whose file was deleted from disk.
+   */
+  markDeleted(filePath: string): void {
+    const absPath = path.resolve(filePath);
+    const existing = this.openArchives.get(absPath);
+    if (!existing) {
+      return;
     }
+    this.openArchives.delete(absPath);
+    this.refreshGeneration.set(absPath, (this.refreshGeneration.get(absPath) ?? 0) + 1);
+    this.releaseResources(absPath);
+    this.emit({ type: 'deleted', filePath: absPath, previousEntries: existing.entries });
   }
 
   /**
@@ -206,20 +287,57 @@ export class ArchiveManager {
 
   /**
    * Refresh an already-opened archive (re-read entries).
+   *
+   * If the archive can't be read (e.g. it's still being written), the
+   * previous entries are kept and the error is rethrown.
    */
   async refreshArchive(filePath: string): Promise<OpenArchive | undefined> {
     const absPath = path.resolve(filePath);
-    if (!this.openArchives.has(absPath)) {
+    const previous = this.openArchives.get(absPath);
+    if (!previous) {
       return undefined;
     }
-    this.openArchives.delete(absPath);
-    this.bufferCache.evictArchive(absPath);
-    for (const handler of this.handlers) {
-      if (handler.dispose) {
-        handler.dispose(absPath);
-      }
+
+    const generation = (this.refreshGeneration.get(absPath) ?? 0) + 1;
+    this.refreshGeneration.set(absPath, generation);
+
+    // Release handler caches first so the re-read sees the new file contents
+    this.releaseResources(absPath);
+    const archive = await this.loadArchive(absPath, previous.type);
+
+    if (this.refreshGeneration.get(absPath) !== generation || !this.openArchives.has(absPath)) {
+      // Superseded by a newer refresh, or closed/deleted while we were reading
+      return this.openArchives.get(absPath);
     }
-    return this.openArchive(absPath);
+
+    this.openArchives.set(absPath, archive);
+    // Drop anything cached from the old file while the re-read was in flight
+    this.bufferCache.evictArchive(absPath);
+    this.emit({ type: 'changed', filePath: absPath, archive, previousEntries: previous.entries });
+    return archive;
+  }
+
+  /**
+   * Re-read an archive only if its size or mtime on disk differs from what
+   * was last read. Also re-opens an archive previously marked as deleted
+   * that has reappeared. Returns true if the archive was reloaded.
+   */
+  async refreshIfChanged(filePath: string): Promise<boolean> {
+    const absPath = path.resolve(filePath);
+    const diskStat = await fs.promises.stat(absPath);
+    const existing = this.openArchives.get(absPath);
+
+    if (!existing) {
+      const archive = await this.openArchive(absPath);
+      this.emit({ type: 'changed', filePath: absPath, archive, previousEntries: [] });
+      return true;
+    }
+
+    if (existing.diskMtime === diskStat.mtimeMs && existing.diskSize === diskStat.size) {
+      return false;
+    }
+    await this.refreshArchive(absPath);
+    return true;
   }
 
   /**

@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: "package.json"
           cache: npm
@@ -32,10 +32,10 @@ jobs:
         run: npm run compile
 
       - name: Pack and list files
-        run: npx @vscode/vsce pack && npx @vscode/vsce ls --tree
+        run: npx vsce pack && npx vsce ls --tree
 
       - name: Publish to Visual Studio Marketplace
-        run: npx @vscode/vsce publish --no-git-tag-version
+        run: npx vsce publish --no-git-tag-version
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
