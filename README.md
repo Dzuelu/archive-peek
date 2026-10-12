@@ -83,7 +83,9 @@ npm run bench:compare    # compare the current code against that baseline (same 
 
 Timings depend on the machine, so only compare results recorded on the same machine. CI does this
 on every push: it benchmarks `main`, then tests and benchmarks the pushed commit on the same runner,
-and shows the comparison in the workflow log and on the run's summary page.
+and shows the comparison in the workflow log and on the run's summary page. The report
+(`scripts/bench-report.mjs`) compares median times and only flags changes of at least 10% that are also
+larger than the combined margin of error; smaller differences are runner noise.
 
 Press **F5** to launch the Extension Development Host.
 

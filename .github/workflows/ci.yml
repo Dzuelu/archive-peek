@@ -55,29 +55,11 @@ jobs:
         # bash (rather than the default shell) enables pipefail, so a failure piped through tee still fails the step
         shell: bash
         run: |
-          if [ -f "$RUNNER_TEMP/bench-main.json" ]; then
-            heading="Speed (compared with main)"
-            npx vitest bench --run --compare "$RUNNER_TEMP/bench-main.json" 2>&1 | tee "$RUNNER_TEMP/bench.log"
-          else
-            heading="Speed (main could not be benchmarked; no comparison)"
-            npm run bench 2>&1 | tee "$RUNNER_TEMP/bench.log"
-          fi
           mkdir -p bench-results
+          cp "$RUNNER_TEMP/bench-main.json" bench-results/baseline.json 2>/dev/null || true
           cp "$RUNNER_TEMP/memory-baseline.json" bench-results/ 2>/dev/null || true
-          npm run bench:memory 2>&1 | tee "$RUNNER_TEMP/memory.log"
+          npx vitest bench --run --outputJson bench-results/current.json
+          npm run bench:memory
 
-          # Show the same output on the run's summary page, without color codes
-          strip() { sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' "$1"; }
-          {
-            echo "## Benchmarks"
-            echo
-            echo "### $heading"
-            echo '```text'
-            strip "$RUNNER_TEMP/bench.log"
-            echo '```'
-            echo
-            echo "### Memory retained by the ZIP handler"
-            echo '```text'
-            strip "$RUNNER_TEMP/memory.log"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          # Markdown report comparing against main, shown in the log and on the run's summary page
+          node scripts/bench-report.mjs | tee -a "$GITHUB_STEP_SUMMARY"

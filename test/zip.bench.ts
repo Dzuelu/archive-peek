@@ -38,34 +38,37 @@ describe('Zip: cold open + list', () => {
 describe('Zip: warm read (archive already listed)', () => {
   const large = new ZipHandler();
   const many = new ZipHandler();
-  const ready = Promise.all([large.listEntries(LARGE_ZIP), many.listEntries(MANY_ZIP)]);
+  // Listed on first use rather than here: describe() bodies run while the file is collected, so starting
+  // the listing here would overlap with the cold benchmarks above. The first call lands in warmup.
+  let listed: Promise<unknown> | undefined;
+  const ready = () => (listed ??= Promise.all([large.listEntries(LARGE_ZIP), many.listEntries(MANY_ZIP)]));
 
   bench('large.zip first small entry', async () => {
-    await ready;
+    await ready();
     await large.readEntry(LARGE_ZIP, LARGE_ENTRIES.first);
   });
 
   bench('large.zip 1 MB entry', async () => {
-    await ready;
+    await ready();
     await large.readEntry(LARGE_ZIP, LARGE_ENTRIES.medium);
   });
 
   bench(
     'large.zip last 50 MB entry',
     async () => {
-      await ready;
+      await ready();
       await large.readEntry(LARGE_ZIP, LARGE_ENTRIES.last);
     },
     SLOW
   );
 
   bench('many.zip first entry', async () => {
-    await ready;
+    await ready();
     await many.readEntry(MANY_ZIP, MANY_ENTRIES.first);
   });
 
   bench('many.zip last entry', async () => {
-    await ready;
+    await ready();
     await many.readEntry(MANY_ZIP, MANY_ENTRIES.last);
   });
 });
