@@ -3,6 +3,7 @@ import * as path from 'path';
 import { ArchiveManager } from './archiveManager';
 import { ArchiveFileSystemProvider, ARCHIVE_SCHEME } from './archiveFileSystemProvider';
 import { ArchiveEditorProvider } from './archiveEditorProvider';
+import { ArchiveWatcher } from './archiveWatcher';
 
 let archiveManager: ArchiveManager;
 let fsProvider: ArchiveFileSystemProvider;
@@ -10,6 +11,10 @@ let fsProvider: ArchiveFileSystemProvider;
 export function activate(context: vscode.ExtensionContext) {
   archiveManager = new ArchiveManager();
   fsProvider = new ArchiveFileSystemProvider(archiveManager);
+  context.subscriptions.push(fsProvider);
+
+  // Automatically refresh opened archives when they change on disk
+  context.subscriptions.push(new ArchiveWatcher(archiveManager));
 
   // Register the virtual filesystem for the archive:/ scheme
   context.subscriptions.push(

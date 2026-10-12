@@ -14,7 +14,7 @@ const prettierConfig = {
 
 export default tseslint.config(
   {
-    ignores: ['out/**', 'node_modules/**']
+    ignores: ['out/**', 'node_modules/**', 'test/fixtures/**']
   },
   ...tseslint.configs.recommended,
   prettier,

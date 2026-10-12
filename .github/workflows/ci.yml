@@ -9,13 +9,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: "package.json"
           cache: npm
+
+      # Benchmark main first so the branch can be compared against it on the
+      # same runner (timings are only comparable on the same machine).
+      - name: Benchmark main (baseline)
+        # A main that can't be benchmarked shouldn't fail the build
+        continue-on-error: true
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          git checkout --detach FETCH_HEAD
+          npm ci
+          ./test/fixtures/create-fixtures.sh
+          npx vitest bench --run --outputJson "$RUNNER_TEMP/bench-main.json"
+          if [ -f vitest.memory.config.ts ]; then
+            BENCH_LABEL=baseline npx vitest run --config vitest.memory.config.ts
+            cp bench-results/memory-baseline.json "$RUNNER_TEMP/"
+          fi
+
+      - name: Check out branch
+        run: git checkout --force --detach "$GITHUB_SHA"
 
       - name: Install dependencies
         run: npm ci
@@ -32,5 +51,33 @@ jobs:
       - name: Test
         run: npm run test
 
-      - name: Benchmarks
-        run: npm run bench
+      - name: Benchmarks (compared with main)
+        # bash (rather than the default shell) enables pipefail, so a failure piped through tee still fails the step
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/bench-main.json" ]; then
+            heading="Speed (compared with main)"
+            npx vitest bench --run --compare "$RUNNER_TEMP/bench-main.json" 2>&1 | tee "$RUNNER_TEMP/bench.log"
+          else
+            heading="Speed (main could not be benchmarked; no comparison)"
+            npm run bench 2>&1 | tee "$RUNNER_TEMP/bench.log"
+          fi
+          mkdir -p bench-results
+          cp "$RUNNER_TEMP/memory-baseline.json" bench-results/ 2>/dev/null || true
+          npm run bench:memory 2>&1 | tee "$RUNNER_TEMP/memory.log"
+
+          # Show the same output on the run's summary page, without color codes
+          strip() { sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' "$1"; }
+          {
+            echo "## Benchmarks"
+            echo
+            echo "### $heading"
+            echo '```text'
+            strip "$RUNNER_TEMP/bench.log"
+            echo '```'
+            echo
+            echo "### Memory retained by the ZIP handler"
+            echo '```text'
+            strip "$RUNNER_TEMP/memory.log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

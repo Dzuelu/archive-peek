@@ -49,24 +49,22 @@ export class ArchiveEditorProvider implements vscode.CustomReadonlyEditorProvide
       vscode.window.showErrorMessage(`Failed to open archive: ${error.message}`);
     }
 
-    const fileCount = archive ? archive.entries.filter((e) => !e.isDirectory).length : 0;
-    const dirCount = archive ? archive.entries.filter((e) => e.isDirectory).length : 0;
-    const archiveType = archive ? archive.type.toUpperCase() : 'Unknown';
-    const totalSize = archive ? archive.entries.reduce((sum, e) => sum + e.size, 0) : 0;
-
-    // Build the tree structure for the webview
-    const tree = archive ? this.buildTree(archive) : [];
-
     webviewPanel.webview.options = { enableScripts: true };
-    webviewPanel.webview.html = this.getWebviewHtml(
-      fileName,
-      archivePath,
-      archiveType,
-      fileCount,
-      dirCount,
-      totalSize,
-      tree
-    );
+    this.render(webviewPanel, fileName, archivePath, archive);
+
+    // Re-render when the archive changes or disappears on disk
+    const absPath = path.resolve(archivePath);
+    const subscription = this.archiveManager.onDidChangeArchive((event) => {
+      if (event.filePath !== absPath) {
+        return;
+      }
+      if (event.type === 'changed') {
+        this.render(webviewPanel, fileName, archivePath, event.archive);
+      } else if (event.type === 'deleted') {
+        this.render(webviewPanel, fileName, archivePath, undefined, 'This archive was deleted from disk.');
+      }
+    });
+    webviewPanel.onDidDispose(() => subscription.dispose());
 
     // Handle messages from the webview (file open requests)
     webviewPanel.webview.onDidReceiveMessage(async (message) => {
@@ -82,6 +80,33 @@ export class ArchiveEditorProvider implements vscode.CustomReadonlyEditorProvide
         }
       }
     }, undefined);
+  }
+
+  private render(
+    webviewPanel: vscode.WebviewPanel,
+    fileName: string,
+    archivePath: string,
+    archive: OpenArchive | undefined,
+    notice?: string
+  ): void {
+    const fileCount = archive ? archive.entries.filter((e) => !e.isDirectory).length : 0;
+    const dirCount = archive ? archive.entries.filter((e) => e.isDirectory).length : 0;
+    const archiveType = archive ? archive.type.toUpperCase() : 'Unknown';
+    const totalSize = archive ? archive.entries.reduce((sum, e) => sum + e.size, 0) : 0;
+
+    // Build the tree structure for the webview
+    const tree = archive ? this.buildTree(archive) : [];
+
+    webviewPanel.webview.html = this.getWebviewHtml(
+      fileName,
+      archivePath,
+      archiveType,
+      fileCount,
+      dirCount,
+      totalSize,
+      tree,
+      notice
+    );
   }
 
   /**
@@ -188,7 +213,8 @@ export class ArchiveEditorProvider implements vscode.CustomReadonlyEditorProvide
     fileCount: number,
     dirCount: number,
     totalSize: number,
-    tree: TreeNode[]
+    tree: TreeNode[],
+    notice?: string
   ): string {
     const treeJson = JSON.stringify(tree);
 
@@ -227,6 +253,13 @@ export class ArchiveEditorProvider implements vscode.CustomReadonlyEditorProvide
       color: var(--vscode-descriptionForeground);
       margin-top: 2px;
       word-break: break-all;
+    }
+    .notice {
+      background: var(--vscode-inputValidation-warningBackground);
+      border: 1px solid var(--vscode-inputValidation-warningBorder);
+      padding: 8px 12px;
+      margin-bottom: 20px;
+      border-radius: 4px;
     }
 
     /* ── Stats ── */
@@ -340,7 +373,7 @@ export class ArchiveEditorProvider implements vscode.CustomReadonlyEditorProvide
       <div class="subtitle">${escapeHtml(filePath)}</div>
     </div>
   </div>
-
+${notice ? `\n  <div class="notice">${escapeHtml(notice)}</div>\n` : ''}
   <div class="stats">
     <div class="stat-card">
       <div class="stat-label">Format</div>

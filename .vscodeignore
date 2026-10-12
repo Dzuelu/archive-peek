@@ -7,3 +7,5 @@ tsconfig.json
 eslint.config.mjs
 .gitignore
 .png
+bench-results
+vitest.memory.config.ts
